@@ -1,0 +1,48 @@
+
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roulette IA Analyst Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'signal-blue': 'hsl(207, 70%, 53%)',
+                        'signal-yellow': 'hsl(45, 90%, 55%)',
+                        'signal-green': 'hsl(145, 63%, 42%)',
+                        'signal-pink': 'hsl(330, 80%, 60%)',
+                        'signal-orange': 'hsl(27, 80%, 52%)',
+                        'signal-purple': 'hsl(260, 70%, 60%)',
+                    },
+                    animation: {
+                        'signal-glow': 'signal-glow 2s ease-in-out infinite',
+                    },
+                    keyframes: {
+                        'signal-glow': {
+                            '0%, 100%': { boxShadow: '0 0 5px currentColor' },
+                            '50%': { boxShadow: '0 0 20px currentColor, 0 0 30px currentColor' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+<script type="importmap">
+{
+  "imports": {
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3"
+  }
+}
+</script>
+</head>
+<body class="bg-slate-900 text-slate-100 antialiased">
+    <div id="root"></div>
+</body>
+</html>
