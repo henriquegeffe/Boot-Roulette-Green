@@ -12,7 +12,7 @@ export interface RobotSignal {
   strategy: string;
   confidence: number;
   baseNumbers: number[];
-  result?: "win" | "loss" | "pending";
+  result?: "win" | "loss" | "pending" | "cancelled";
   validityRounds: number;
   roundsLeft: number;
   winRound?: number;
@@ -46,6 +46,36 @@ export interface PelayoRobotSignal extends RobotSignal {
   testedRounds: number[];
 }
 
+export interface MascaradosRobotSignal extends RobotSignal {
+  group: string;
+  numbers: number[];
+  reasoning: string;
+  testedRounds: number[];
+}
+
+export interface GPSRobotSignal extends RobotSignal {
+  direction: string;
+  numbers: number[];
+  zonaAtaque: number[];
+  zonaDefesa: number[];
+  destinoProvavel: number[];
+  reasoning: string;
+  testedRounds: number[];
+}
+
+export interface TriangulacaoRobotSignal extends RobotSignal {
+  numbers: number[];
+  reasoning: string;
+  testedRounds: number[];
+  triangleType: 1 | 2;
+}
+
+export interface EscadinhaRobotSignal extends RobotSignal {
+  numbers: number[];
+  reasoning: string;
+  testedRounds: number[];
+}
+
 export interface StrategyPerformance {
   key: string;
   lossStreak: number;
@@ -53,9 +83,11 @@ export interface StrategyPerformance {
 
 export interface TerminalAnalysisResult {
   terminal: number;
-  count: number;
+  shortCount: number;
+  longCount: number;
   positions: number[];
   hitCount: number;
+  score: number;
 }
 
 export interface GeometricPatternAnalysis {
@@ -109,6 +141,12 @@ export interface PelayoAnalysisResult {
     status: 'Dominante' | 'Cluster' | 'Normal' | 'Atrasado';
     anchorNumbers: { number: number; count: number }[];
   }[];
+  caminhoDaBola?: {
+    lastJump: number;
+    jumpType: 'Curto' | 'Médio' | 'Longo' | 'Parado';
+    direction: 'Frente' | 'Trás' | 'Parado';
+    pattern: string;
+  };
   bestSignal: {
     confidence: number;
     numbers: number[];
@@ -116,4 +154,110 @@ export interface PelayoAnalysisResult {
   } | null;
 }
 
-export type ColorFilterType = "casas" | "terminais" | "geometricos";
+export interface MascaradosAnalysisResult {
+  unifiedStats: {
+    [key: string]: {
+      count: number;
+      percentage: number;
+      lastPos: number | null;
+      numbers: number[];
+      history: number[];
+    };
+  };
+  bestSignal: {
+    confidence: number;
+    numbers: number[];
+    reasoning: string;
+    group: string;
+    pattern: string;
+  } | null;
+  activePatterns: {
+    type: string;
+    reasoning: string;
+    priority: number;
+    value: number;
+    numbers: number[];
+  }[];
+  globalTrends: {
+    topMascarados: { value: number; count: number; percentage: number }[];
+    topEscadinhas: { pair: string; count: number; percentage: number }[];
+    topCorrelations: { from: number; to: number; count: number; percentage: number }[];
+    topRepetitions: { value: number; count: number; percentage: number }[];
+  };
+}
+
+export interface GPSAnalysisResult {
+  dominante: string;
+  frequencia: number;
+  regionFrequency: number;
+  repeticoes: number;
+  padrao: "REPETINDO" | "ESTÁVEL";
+  destino: number;
+  zona: number[];
+  zonaAtaque: number[];
+  zonaDefesa: number[];
+  targetNumbers: number[];
+  hotRegion: string;
+  alerta: boolean;
+  intensidade: "ALTA" | "MÉDIA" | "BAIXA";
+  tendencia: "HORÁRIO" | "ANTI-HORÁRIO" | "ESTÁVEL";
+  direcoes: string[];
+  contagem: Record<string, number>;
+  regionCounts: Record<string, number>;
+  frequenciaNumerosPorDirecao: Record<string, Record<number, number>>;
+  hotNumbers50: number[];
+}
+
+export interface TriangulacaoAnalysisResult {
+  bestSignal: {
+    confidence: number;
+    numbers: number[];
+    reasoning: string;
+    triangleType: 1 | 2;
+  } | null;
+  triangleStats: {
+    1: { hits: number; total: number; rate: number };
+    2: { hits: number; total: number; rate: number };
+  };
+  flowAnalysis: {
+    consecutiveRepetitions: { type: 1 | 2; count: number }[];
+    currentStreak: { type: 1 | 2; count: number } | null;
+    topCallers: { number: number; type: 1 | 2; count: number }[];
+    transitions: { from: 1 | 2; to: 1 | 2; count: number }[];
+  };
+}
+
+export interface EscadinhaAnalysisResult {
+  bestSignal: {
+    confidence: number;
+    numbers: number[];
+    reasoning: string;
+  } | null;
+  escadinhaStats: {
+    [terminal: number]: {
+      hits: number;
+      total: number;
+      rate: number;
+    }
+  };
+  flowAnalysis: {
+    consecutiveRepetitions: { terminal: number; count: number }[];
+    currentStreak: { terminal: number; count: number } | null;
+    topCallers: { number: number; terminal: number; count: number }[];
+    transitions: { from: number; to: number; count: number }[];
+  };
+  terminalTrends: {
+    lowCount: number;
+    highCount: number;
+    evenCount: number;
+    oddCount: number;
+    lowPercentage: number;
+    highPercentage: number;
+    evenPercentage: number;
+    oddPercentage: number;
+    hotTerminals: number[];
+    coldTerminals: number[];
+  };
+}
+
+export type ColorFilterType = "casas" | "terminais" | "geometricos" | "terminais_escadinha" | "triangulo" | "mascarados";
