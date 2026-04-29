@@ -1768,7 +1768,7 @@ const App: React.FC = () => {
         patternId: triggeredGeo.patternId, 
         patternName: triggeredGeo.name, 
         predictedNumbers: final, 
-        strategy: `Padrão: ${triggeredGeo.name} + ${nbr}V)`, 
+        strategy: `Geometricos Padrão: ${triggeredGeo.name} ${triggeredGeo.numbers.join(' ')} + ${nbr} V`, 
         confidence: triggeredGeo.confidence, 
         baseNumbers: triggeredGeo.numbers, 
         result: "pending", 
@@ -1888,7 +1888,7 @@ const App: React.FC = () => {
       const sig: TriangulacaoRobotSignal = {
         id: `tri-${Date.now()}`,
         timestamp: new Date(),
-        strategy: "Triângulo de Precisão",
+        strategy: `Triângulo de Precisão ${triangulacaoAnalysis.bestSignal.numbers.join(' ')} +`,
         confidence: triangulacaoAnalysis.bestSignal.confidence,
         baseNumbers: triangulacaoAnalysis.bestSignal.numbers,
         numbers: triangulacaoAnalysis.bestSignal.numbers,
@@ -1906,10 +1906,13 @@ const App: React.FC = () => {
 
     // ESCADINHAS
     if (escadinhaAnalysis.bestSignal && !currentEscadinhaRef.current) {
+      const lastTerminal = numberHistory[0] % 10;
+      const tAbove = (lastTerminal + 1) % 10;
+      const tBelow = (lastTerminal - 1 + 10) % 10;
       const sig: EscadinhaRobotSignal = {
         id: `esc-${Date.now()}`,
         timestamp: new Date(),
-        strategy: "Escadinha de Terminais",
+        strategy: `Escadinha: Escadinha de Terminais T${tAbove} T${tBelow}`,
         confidence: escadinhaAnalysis.bestSignal.confidence,
         baseNumbers: escadinhaAnalysis.bestSignal.numbers,
         numbers: escadinhaAnalysis.bestSignal.numbers,
@@ -2428,7 +2431,8 @@ const App: React.FC = () => {
           </div>
         </div>
         
-        {topNumbers.length > 0 && (
+        {/* Removed number chips from targets as requested */}
+        {false && topNumbers.length > 0 && (
           <div className="bg-slate-950/40 rounded-xl p-2 border border-white/5 mb-2.5">
             <div className="flex items-center gap-1.5 mb-2">
               <TrendingUp className="w-3 h-3 text-slate-500" />
@@ -2815,17 +2819,10 @@ const App: React.FC = () => {
                           </div>
                         </div>
 
-                        <div className="bg-orange-500/5 p-2 rounded-xl border border-orange-500/10 shadow-inner">
-                          <p className="text-[9px] font-black text-orange-400 uppercase tracking-widest mb-1.5 flex items-center gap-1">
-                             Entrada Sugerida:
+                        <div className="bg-orange-500/10 p-3 rounded-xl border border-orange-500/20 shadow-inner flex flex-col items-center justify-center min-h-[40px]">
+                          <p className="text-[12px] font-black text-orange-400 uppercase tracking-widest text-center leading-tight">
+                             {sig.strategy}
                           </p>
-                          <div className="flex flex-wrap gap-1">
-                            {sig.numbers.slice(0, 16).map((n: number) => (
-                              <div key={n} className={`w-4.5 h-4.5 rounded flex items-center justify-center text-[8.5px] font-black text-white ${getNumberColorClass(n)} shadow-md border border-white/5`}>
-                                {n}
-                              </div>
-                            ))}
-                          </div>
                         </div>
 
                         <BetCalculator 
@@ -2873,14 +2870,10 @@ const App: React.FC = () => {
                           <Badge className="bg-cyan-600 text-white font-black text-[8px] h-4 px-2 tracking-tighter shrink-0">{sig.confidence.toFixed(0)}% CONF.</Badge>
                         </div>
                         
-                        <div className="bg-cyan-500/5 p-2 rounded-xl border border-cyan-500/10 shadow-inner">
-                          <div className="flex flex-wrap gap-1">
-                            {sig.numbers.slice(0, 16).map((n: number) => (
-                              <div key={n} className={`w-4.5 h-4.5 rounded flex items-center justify-center text-[8.5px] font-black text-white ${getNumberColorClass(n)} shadow-md border border-white/5`}>
-                                {n}
-                              </div>
-                            ))}
-                          </div>
+                        <div className="bg-cyan-500/10 p-3 rounded-xl border border-cyan-500/20 shadow-inner flex flex-col items-center justify-center min-h-[40px]">
+                          <p className="text-[12px] font-black text-cyan-400 uppercase tracking-widest text-center leading-tight">
+                            {sig.strategy}
+                          </p>
                         </div>
 
                         <BetCalculator 
@@ -2928,14 +2921,10 @@ const App: React.FC = () => {
                           <Badge className="bg-blue-600 text-white font-black text-[8px] h-4 px-2 tracking-tighter">{sig.confidence.toFixed(0)}% CONF.</Badge>
                         </div>
                         
-                        <div className="bg-blue-500/5 p-2 rounded-xl border border-blue-500/10 shadow-inner">
-                          <div className="flex flex-wrap gap-1">
-                            {sig.numbers.slice(0, 16).map((n: number) => (
-                              <div key={n} className={`w-4.5 h-4.5 rounded flex items-center justify-center text-[8.5px] font-black text-white ${getNumberColorClass(n)} shadow-md border border-white/5`}>
-                                {n}
-                              </div>
-                            ))}
-                          </div>
+                        <div className="bg-blue-500/10 p-3 rounded-xl border border-blue-500/20 shadow-inner flex flex-col items-center justify-center min-h-[40px]">
+                          <p className="text-[12px] font-black text-blue-400 uppercase tracking-widest text-center leading-tight">
+                            {sig.strategy}
+                          </p>
                         </div>
 
                         <BetCalculator 
@@ -2982,14 +2971,10 @@ const App: React.FC = () => {
                         <Badge className={`${bg} text-white font-black text-[8px] h-4 px-2 tracking-tighter shrink-0`}>{sig.confidence.toFixed(0)}% CONF.</Badge>
                       </div>
                       
-                      <div className="bg-slate-900/40 p-2 rounded-xl border border-white/5 shadow-inner">
-                        <div className="flex flex-wrap gap-1">
-                          {(sig.numbers || sig.predictedNumbers || []).slice(0, 18).map((n: number) => (
-                            <div key={n} className={`w-4.5 h-4.5 rounded flex items-center justify-center text-[8.5px] font-black text-white ${getNumberColorClass(n)} shadow-md border border-white/5`}>
-                              {n}
-                            </div>
-                          ))}
-                        </div>
+                      <div className="bg-slate-900/60 p-3 rounded-xl border border-white/10 shadow-inner flex flex-col items-center justify-center min-h-[40px]">
+                        <p className="text-[12px] font-black text-white uppercase tracking-widest text-center leading-tight">
+                          {sig.strategy}
+                        </p>
                       </div>
 
                       <BetCalculator 
@@ -3091,16 +3076,12 @@ const App: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap gap-1.5 mt-2">
-                    {gpsAnalysis.targetNumbers.map(num => (
-                      <div key={num} className={`px-2 py-1 rounded-md text-[10px] font-black text-white shadow-sm border border-white/5 ${getNumberColorClass(num)}`}>
-                        {num}
-                      </div>
-                    ))}
-                    {gpsAnalysis.targetNumbers.length === 0 && (
-                      <span className="text-[9px] font-bold text-slate-500 uppercase italic">Aguardando Alvos...</span>
-                    )}
-                  </div>
+                  {/* Removed number chips as requested */}
+                  {gpsAnalysis.targetNumbers.length === 0 && (
+                    <div className="mt-2">
+                       <span className="text-[9px] font-bold text-slate-500 uppercase italic">Aguardando Alvos...</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Análise de Regiões (Solicitado pelo Usuário) */}
@@ -3266,12 +3247,7 @@ const App: React.FC = () => {
                             <span className="text-[10px] font-black text-white">MASCARADO {m.value}</span>
                             <span className="text-[10px] font-black text-orange-400">{m.percentage.toFixed(1)}%</span>
                           </div>
-                          <div className="flex flex-wrap gap-1 mb-1.5">
-                            {mascaradosGroups[m.value.toString()].slice(0, 6).map(num => (
-                              <span key={num} className="text-[8px] font-bold text-slate-500 bg-slate-900 px-1 rounded">{num}</span>
-                            ))}
-                          </div>
-                          <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+                          <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden mt-2">
                             <div 
                               className="h-full bg-orange-500 rounded-full transition-all duration-500" 
                               style={{ width: `${Math.min(m.percentage * 3, 100)}%` }}
@@ -3295,12 +3271,7 @@ const App: React.FC = () => {
                             <span className="text-[10px] font-black text-white">MASCARADO {r.value}</span>
                             <span className="text-[10px] font-black text-red-400">{r.percentage.toFixed(1)}%</span>
                           </div>
-                          <div className="flex flex-wrap gap-1 mb-1.5">
-                            {mascaradosGroups[r.value.toString()].slice(0, 6).map(num => (
-                              <span key={num} className="text-[8px] font-bold text-slate-500 bg-slate-900 px-1 rounded">{num}</span>
-                            ))}
-                          </div>
-                          <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+                          <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden mt-2">
                             <div 
                               className="h-full bg-red-500 rounded-full transition-all duration-500" 
                               style={{ width: `${Math.min(r.percentage * 3, 100)}%` }}
@@ -3381,11 +3352,6 @@ const App: React.FC = () => {
                       <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
                         <div className="h-full bg-cyan-500 rounded-full" style={{ width: `${triangulacaoAnalysis.triangleStats[1].rate}%` }} />
                       </div>
-                      <div className="mt-3 grid grid-cols-3 gap-1">
-                        {[11, 15, 22].map(n => (
-                          <div key={n} className={`h-6 rounded flex items-center justify-center text-[10px] font-black text-white ${getNumberColorClass(n)}`}>{n}</div>
-                        ))}
-                      </div>
                     </div>
                   </div>
 
@@ -3400,11 +3366,6 @@ const App: React.FC = () => {
                       </div>
                       <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
                         <div className="h-full bg-cyan-500 rounded-full" style={{ width: `${triangulacaoAnalysis.triangleStats[2].rate}%` }} />
-                      </div>
-                      <div className="mt-3 grid grid-cols-3 gap-1">
-                        {[17, 24, 28].map(n => (
-                          <div key={n} className={`h-6 rounded flex items-center justify-center text-[10px] font-black text-white ${getNumberColorClass(n)}`}>{n}</div>
-                        ))}
                       </div>
                     </div>
                   </div>
