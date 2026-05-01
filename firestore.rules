@@ -25,8 +25,11 @@ service cloud.firestore {
       allow read: if isOwner(userId) || isAdmin();
       
       // Permite que o e-mail mestre crie seu primeiro perfil de admin
-      // Ou que um admin existente crie outros usuários
-      allow create: if (isSignedIn() && request.auth.token.email == 'henrique.geffe.89@gmail.com') || isAdmin();
+      // Ou que um usuário crie seu próprio perfil (limitado a role 'user')
+      // Ou que um admin existente crie outros
+      allow create: if (isSignedIn() && request.auth.token.email == 'henrique.geffe.89@gmail.com') || 
+                     (isOwner(userId) && request.resource.data.role == 'user') ||
+                     isAdmin();
       
       // Apenas admins ou o próprio dono (para campos limitados) podem atualizar
       allow update: if isAdmin() || (isOwner(userId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']));

@@ -253,18 +253,9 @@ const UserManagement: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     setMessage("");
 
     try {
-      // NOTE: Creating a user via Firebase SDK signs the current user out.
-      // We will warn the admin about this or handle it.
-      // For simplicity in this applet, we will use a dedicated backend endpoint if available,
-      // but since we don't have one, we'll suggest using the Firebase Console or 
-      // implement a simple "Create" that might require a re-login.
-      
-      // Alternatively, we can just store the credentials in a 'pending_users' collection
-      // and have a script or another way.
-      
-      // For now, let's just show a guide on how to do it in the console to be safe 
-      // and avoid signing out the admin.
-      setMessage("Para criar usuários com segurança, use o Console do Firebase > Authentication > Add User. Use o email: usuario@signal-cortex.br");
+      // Se o admin tentar criar, apenas reforçamos que a gestão principal é no Console
+      setMessage(`O acesso via e-mail deve ser gerenciado no Console do Firebase. Se o usuário "${newUsername}@signal-cortex.br" já existe lá, ele já pode tentar o login com a senha definida.`);
+      setNewUsername("");
     } catch (err) {
       setMessage("Erro ao criar usuário.");
     } finally {
@@ -337,8 +328,12 @@ const LoginScreen: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
       onLogin();
     } catch (err: any) {
       console.error(err);
-      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
-        setError("Usuário ou senha incorretos");
+      if (err.code === 'auth/user-not-found') {
+        setError("Usuário não encontrado. Certifique-se de que o acesso foi criado no Console do Firebase.");
+      } else if (err.code === 'auth/wrong-password') {
+        setError("Senha incorreta. Tente novamente.");
+      } else if (err.code === 'auth/invalid-credential') {
+        setError("Credenciais inválidas ou usuário inexistente.");
       } else {
         setError("Erro ao tentar entrar. Tente novamente.");
       }
@@ -465,22 +460,29 @@ const App: React.FC = () => {
           const profileDoc = await getDoc(doc(db, "users", user.uid));
           if (profileDoc.exists()) {
             setUserProfile(profileDoc.data() as any);
-          } else if (user.email === 'henrique.geffe.89@gmail.com') {
-            const newProfile = { role: 'admin', username: 'Henrique' };
-            await setDoc(doc(db, "users", user.uid), newProfile);
-            setUserProfile(newProfile);
+          } else {
+            // Create default profile for any new authenticated user
+            const username = user.email?.split('@')[0] || 'Usuário';
+            const isMasterAdmin = user.email === 'henrique.geffe.89@gmail.com';
+            const role = isMasterAdmin ? 'admin' : 'user';
+            const newProfile = { role, username, email: user.email };
+            
+            try {
+              // Tentamos criar o perfil no Firestore se for o primeiro login
+              await setDoc(doc(db, "users", user.uid), newProfile);
+              setUserProfile(newProfile);
+            } catch (e) {
+              console.warn("Profile auto-creation delayed or failed, using local state:", e);
+              // Fallback para estado local para que o usuário não fique travado
+              setUserProfile(newProfile);
+            }
           }
           setIsAuthenticated(true);
         } catch (error) {
           console.error("Auth profile check failed:", error);
-          // If we fail to get profile, we handle it as if not authenticated or restricted
-          if (user.email === 'henrique.geffe.89@gmail.com') {
-            // Special fallback for master admin if rules are still propagating
-            setIsAuthenticated(true);
-            setUserProfile({ role: 'admin', username: 'Henrique' });
-          } else {
-            handleFirestoreError(error, OperationType.GET, `users/${user.uid}`);
-          }
+          // Fallback for any authenticated user to at least see the app
+          setIsAuthenticated(true);
+          setUserProfile({ role: 'user', username: user.email?.split('@')[0] || 'Usuário' });
         }
       } else {
         setIsAuthenticated(false);
@@ -546,6 +548,65 @@ const App: React.FC = () => {
   const [currentTriangulacaoSignal, setCurrentTriangulacaoSignal] = useState<TriangulacaoRobotSignal | null>(null);
   const [escadinhaSignals, setEscadinhaSignals] = useState<EscadinhaRobotSignal[]>([]);
   const [currentEscadinhaSignal, setCurrentEscadinhaSignal] = useState<EscadinhaRobotSignal | null>(null);
+
+  // Sync history filter with active tab and active signal
+  useEffect(() => {
+    const tabToFilterMap: Record<string, ColorFilterType> = {
+      main: "terminais",
+      geo: "geometricos",
+      casas: "casas",
+      mascarados: "mascarados",
+      puxam: "triangulo",
+      escadinha: "terminais_escadinha",
+      pelayo: "casas",
+      gps: "terminais"
+    };
+
+    if (tabToFilterMap[activeTab]) {
+      const targetFilter = tabToFilterMap[activeTab];
+      setColorFilter(targetFilter);
+      
+      let subFilter = "all";
+      
+      // Auto-select the active signal's strategy in history
+      if (activeTab === "main") {
+        if (currentMainSignal && currentMainSignal.result === "pending") {
+          subFilter = currentMainSignal.terminal.toString();
+        }
+      } else if (activeTab === "geo") {
+        if (currentGeometricSignal && currentGeometricSignal.result === "pending") {
+          subFilter = currentGeometricSignal.patternId;
+        }
+      } else if (activeTab === "casas") {
+        if (currentCasasSignal && currentCasasSignal.result === "pending") {
+          const n = currentCasasSignal.baseNumbers[0];
+          if (n !== undefined) {
+             if (n < 10) subFilter = "0";
+             else if (n < 20) subFilter = "10";
+             else if (n < 30) subFilter = "20";
+             else subFilter = "30";
+          }
+        }
+      } else if (activeTab === "mascarados") {
+        if (currentMascaradosSignal && currentMascaradosSignal.result === "pending") {
+          subFilter = currentMascaradosSignal.group.replace('M', '');
+        }
+      } else if (activeTab === "puxam") {
+        if (currentTriangulacaoSignal && currentTriangulacaoSignal.result === "pending") {
+          subFilter = currentTriangulacaoSignal.triangleType.toString();
+        }
+      } else if (activeTab === "escadinha") {
+        if (currentEscadinhaSignal && currentEscadinhaSignal.result === "pending") {
+           const lastTerminal = numberHistory[0] % 10;
+           const tAbove = (lastTerminal + 1) % 10;
+           const tBelow = (lastTerminal - 1 + 10) % 10;
+           subFilter = `${tBelow},${tAbove}`;
+        }
+      }
+      
+      setSubColorFilter(subFilter);
+    }
+  }, [activeTab, currentMainSignal, currentGeometricSignal, currentCasasSignal, currentMascaradosSignal, currentTriangulacaoSignal, currentEscadinhaSignal, numberHistory]);
 
   // Profit Calculation Logic per Strategy
   useEffect(() => {
@@ -1490,6 +1551,7 @@ const App: React.FC = () => {
         res.bestSignal = {
           confidence: Math.min(stats.rate + 20, 95),
           numbers: bestT === 1 ? t1Full : t2Full,
+          baseNumbers: bestT === 1 ? triangle1Base : triangle2Base,
           triangleType: bestT,
           reasoning: `Triângulo ${bestT} detectado (${bestT === 1 ? '11-15-22' : '17-24-28'}). Assertividade de ${stats.rate.toFixed(1)}% no histórico.`
         };
@@ -1768,7 +1830,7 @@ const App: React.FC = () => {
         patternId: triggeredGeo.patternId, 
         patternName: triggeredGeo.name, 
         predictedNumbers: final, 
-        strategy: `Geometricos Padrão: ${triggeredGeo.name} ${triggeredGeo.numbers.join(' ')} + ${nbr} V`, 
+        strategy: `Geometricos Padrão: ${triggeredGeo.name} + ${nbr} V`, 
         confidence: triggeredGeo.confidence, 
         baseNumbers: triggeredGeo.numbers, 
         result: "pending", 
@@ -1888,9 +1950,9 @@ const App: React.FC = () => {
       const sig: TriangulacaoRobotSignal = {
         id: `tri-${Date.now()}`,
         timestamp: new Date(),
-        strategy: `Triângulo de Precisão ${triangulacaoAnalysis.bestSignal.numbers.join(' ')} +`,
+        strategy: `Triângulo de Precisão ${triangulacaoAnalysis.bestSignal.baseNumbers?.join(' ')} + 2 V`,
         confidence: triangulacaoAnalysis.bestSignal.confidence,
-        baseNumbers: triangulacaoAnalysis.bestSignal.numbers,
+        baseNumbers: triangulacaoAnalysis.bestSignal.baseNumbers || triangulacaoAnalysis.bestSignal.numbers,
         numbers: triangulacaoAnalysis.bestSignal.numbers,
         result: "pending",
         validityRounds: 2,
@@ -2431,36 +2493,7 @@ const App: React.FC = () => {
           </div>
         </div>
         
-        {/* Removed number chips from targets as requested */}
-        {false && topNumbers.length > 0 && (
-          <div className="bg-slate-950/40 rounded-xl p-2 border border-white/5 mb-2.5">
-            <div className="flex items-center gap-1.5 mb-2">
-              <TrendingUp className="w-3 h-3 text-slate-500" />
-              <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Alvos Prioritários</span>
-            </div>
-            <div className="grid grid-cols-2 gap-1.5 w-full">
-              {topNumbers.slice(0, 4).map((n: any) => (
-                <div key={n.number} className="flex items-center justify-between bg-white/5 px-1.5 py-1 rounded-lg border border-white/5 hover:border-white/10 transition-colors">
-                  <span className={`text-[10px] font-black px-1.5 py-0.5 rounded shadow-lg ${getNumberColorClass(n.number)} text-white`}>{n.number}</span>
-                  <span className="text-[9px] font-black text-slate-300 ml-1">{n.count}x</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {history.length > 0 && (
-          <div className="bg-slate-950/20 rounded-xl p-2 border border-white/5 border-dashed">
-            <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest mb-2 block">Trajetória Real</span>
-            <div className="flex flex-wrap gap-1.5">
-              {history.slice(0, 8).map((n: number, idx: number) => (
-                <div key={idx} className={`w-4.5 h-4.5 rounded-lg flex items-center justify-center text-[9px] font-black text-white ${getNumberColorClass(n)} shadow-md border border-white/5 transform hover:scale-110 transition-transform`}>
-                  {n}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* Removed redundant number chips and history from metric cards for extreme clarity as requested */}
 
         <div className="h-1.5 w-full bg-slate-950/40 rounded-full overflow-hidden mt-3 shadow-inner">
           <div className={`h-full ${colorClass} transition-all duration-1000 opacity-70 group-hover:opacity-100 group-hover:brightness-125`} style={{ width: `${Math.min(percentage * 2, 100)}%` }} />
@@ -2799,26 +2832,17 @@ const App: React.FC = () => {
                     return (
                       <div className="animate-in fade-in slide-in-from-top-2 duration-300 flex flex-col gap-1.5">
                         <div className="flex items-center justify-between bg-orange-600/10 p-1 rounded-lg border border-orange-600/20 shadow-lg">
-                          <div className="flex items-center gap-1.5 px-1">
+                          <div className="flex items-center gap-1.5 px-1 text-[10px] font-black uppercase text-white tracking-widest">
                             <div className="p-1 bg-orange-600 rounded">
                               <Activity className="w-3 h-3 text-white" />
                             </div>
-                            <span className="text-[10px] font-black uppercase text-white tracking-widest">{sig.strategy}</span>
+                            SINAL ATIVO
                           </div>
                           <Badge className="bg-orange-600 text-white font-black text-[8px] h-4 px-2 tracking-tighter">{sig.confidence.toFixed(0)}% CONF.</Badge>
                         </div>
                         
-                        <div className="grid grid-cols-2 gap-1.5">
-                          <div className="bg-slate-900/60 p-1.5 rounded-lg border border-white/5">
-                            <span className="text-[6px] text-slate-500 uppercase font-black">Padrão Detectado</span>
-                            <span className="text-[9px] font-black text-slate-200 uppercase truncate block">{sig.pattern}</span>
-                          </div>
-                          <div className="bg-slate-900/60 p-1.5 rounded-lg border border-white/5">
-                            <span className="text-[6px] text-slate-500 uppercase font-black">Região Alvo</span>
-                            <span className="text-[9px] font-black text-orange-400 uppercase truncate block">{sig.region}</span>
-                          </div>
-                        </div>
-
+                        {/* Removed redundant pattern/region boxes for extreme clarity */}
+                        
                         <div className="bg-orange-500/10 p-3 rounded-xl border border-orange-500/20 shadow-inner flex flex-col items-center justify-center min-h-[40px]">
                           <p className="text-[12px] font-black text-orange-400 uppercase tracking-widest text-center leading-tight">
                              {sig.strategy}
@@ -2861,11 +2885,11 @@ const App: React.FC = () => {
                     return (
                       <div className="animate-in fade-in slide-in-from-top-2 duration-300 flex flex-col gap-1.5">
                         <div className="flex items-center justify-between bg-cyan-600/10 p-1 rounded-lg border border-cyan-600/20 shadow-lg">
-                          <div className="flex items-center gap-1.5 px-1 truncate">
+                          <div className="flex items-center gap-1.5 px-1 text-[10px] font-black uppercase text-white tracking-widest">
                             <div className="p-1 bg-cyan-600 rounded">
                               <Zap className="w-3 h-3 text-white" />
                             </div>
-                            <span className="text-[10px] font-black uppercase text-white tracking-widest truncate">{sig.strategy}</span>
+                            SINAL ATIVO
                           </div>
                           <Badge className="bg-cyan-600 text-white font-black text-[8px] h-4 px-2 tracking-tighter shrink-0">{sig.confidence.toFixed(0)}% CONF.</Badge>
                         </div>
@@ -2912,11 +2936,11 @@ const App: React.FC = () => {
                     return (
                       <div className="animate-in fade-in slide-in-from-top-2 duration-300 flex flex-col gap-1.5">
                         <div className="flex items-center justify-between bg-blue-600/10 p-1 rounded-lg border border-blue-600/20 shadow-lg">
-                          <div className="flex items-center gap-1.5 px-1">
+                          <div className="flex items-center gap-1.5 px-1 text-[10px] font-black uppercase text-white tracking-widest">
                             <div className="p-1 bg-blue-600 rounded">
                               <TrendingUp className="w-3 h-3 text-white" />
                             </div>
-                            <span className="text-[10px] font-black uppercase text-white tracking-widest">{sig.strategy}</span>
+                            SINAL ATIVO
                           </div>
                           <Badge className="bg-blue-600 text-white font-black text-[8px] h-4 px-2 tracking-tighter">{sig.confidence.toFixed(0)}% CONF.</Badge>
                         </div>
@@ -2962,11 +2986,11 @@ const App: React.FC = () => {
                   return (
                     <div className="animate-in fade-in slide-in-from-top-2 duration-300 flex flex-col gap-1.5">
                       <div className="flex items-center justify-between bg-slate-800/20 p-1 rounded-lg border border-white/5 shadow-lg">
-                        <div className="flex items-center gap-1.5 px-1 truncate max-w-[70%]">
+                        <div className="flex items-center gap-1.5 px-1 text-[10px] font-black uppercase text-white tracking-widest">
                            <div className={`p-1 ${bg} rounded shadow-sm opacity-80 shrink-0`}>
                               <Activity className="w-2.5 h-2.5 text-white" />
                            </div>
-                           <span className="text-[10px] font-black uppercase text-white tracking-widest truncate">{sig.strategy}</span>
+                           SINAL ATIVO
                         </div>
                         <Badge className={`${bg} text-white font-black text-[8px] h-4 px-2 tracking-tighter shrink-0`}>{sig.confidence.toFixed(0)}% CONF.</Badge>
                       </div>

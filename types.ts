@@ -212,6 +212,7 @@ export interface TriangulacaoAnalysisResult {
   bestSignal: {
     confidence: number;
     numbers: number[];
+    baseNumbers?: number[];
     reasoning: string;
     triangleType: 1 | 2;
   } | null;
@@ -231,6 +232,7 @@ export interface EscadinhaAnalysisResult {
   bestSignal: {
     confidence: number;
     numbers: number[];
+    baseNumbers?: number[];
     reasoning: string;
   } | null;
   escadinhaStats: {
